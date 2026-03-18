@@ -53,13 +53,24 @@ app.get('/', (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 app.post('/api/complete-order', async (req, res) => {
     try {
+        console.log('📥 Body ricevuto:', JSON.stringify(req.body));
+        console.log('📥 Content-Type:', req.headers['content-type']);
+
         // Parse body se arriva come stringa
         let body = req.body;
         if (typeof body === 'string') {
             body = JSON.parse(body);
         }
+        if (!body || Object.keys(body).length === 0) {
+            return res.status(400).json({ success: false, error: 'Body vuoto' });
+        }
 
         const { firstName, lastName, email, telegram, plan, amount, transactionId } = body;
+
+        // Validazione email
+        if (!email) {
+            return res.status(400).json({ success: false, error: 'Email mancante' });
+        }
 
         console.log('📦 Nuovo ordine ricevuto:', { firstName, lastName, email, plan, amount, transactionId });
 
