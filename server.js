@@ -26,8 +26,8 @@ const transporter = nodemailer.createTransport({
 });
 
 const DOWNLOAD_LINKS = {
-    standard: process.env.DOWNLOAD_LINK_STANDARD || 'https://tuolink.com/download/vaultsystemfx.zip',
-    student: process.env.DOWNLOAD_LINK_STUDENT || 'https://tuolink.com/download/vaultsystemfx.zip'
+    standard: process.env.DOWNLOAD_LINK_STANDARD || 'https://drive.google.com/file/d/1t3sgCXG-1KEKuTQN7nxI9N6fsnpTW0Ln/view?usp=sharing',
+    student: process.env.DOWNLOAD_LINK_STUDENT || 'https://drive.google.com/file/d/1t3sgCXG-1KEKuTQN7nxI9N6fsnpTW0Ln/view?usp=sharing'
 };
 
 const LOGO_URL = 'https://i.imgur.com/cV04HTP.png';
