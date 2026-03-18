@@ -375,22 +375,10 @@ async function sendCryptoNotification(order) {
 // ═══════════════════════════════════════════════════════════════
 // AVVIO SERVER
 // ═══════════════════════════════════════════════════════════════
-app.listen(PORT, () => {
-    console.log(`
-╔═══════════════════════════════════════════════════════════════╗
-║           VaultSystemFx Backend Server                        ║
-║                                                               ║
-║   🚀 Server attivo su porta ${PORT}                             ║
-║   📧 Email: ${process.env.EMAIL_USER || 'Non configurata'}
-║                                                               ║
-║   Endpoints:                                                  ║
-║   • POST /api/complete-order  - Completa ordine               ║
-║   • POST /api/paypal-webhook  - Webhook PayPal                ║
-║   • POST /api/crypto-order    - Ordine crypto                 ║
-║   • POST /api/send-manual     - Invio manuale (admin)         ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝
-    `);
-});
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`🚀 Server locale su http://localhost:${PORT}`);
+    });
+}
 
 module.exports = app;
