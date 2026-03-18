@@ -26,8 +26,8 @@ const transporter = nodemailer.createTransport({
 });
 
 const DOWNLOAD_LINKS = {
-    standard: process.env.DOWNLOAD_LINK_STANDARD || 'https://github.com/matteosani05-blip/vaultsystemfx-backend/releases/download/v1.0/test.zip',
-    student: process.env.DOWNLOAD_LINK_STUDENT || 'https://github.com/matteosani05-blip/vaultsystemfx-backend/releases/download/v1.0/test.zip'
+    standard: process.env.DOWNLOAD_LINK_STANDARD || 'https://www.dropbox.com/scl/fi/l5n3cysy5kyeh0525f8la/test.zip?rlkey=p49q4d2nkvjsvkssig946tn38&st=3gz0e6hp&dl=1',
+    student: process.env.DOWNLOAD_LINK_STUDENT || 'https://www.dropbox.com/scl/fi/l5n3cysy5kyeh0525f8la/test.zip?rlkey=p49q4d2nkvjsvkssig946tn38&st=3gz0e6hp&dl=1'
 };
 
 const LOGO_URL = 'https://i.imgur.com/cV04HTP.png';
