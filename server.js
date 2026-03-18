@@ -30,7 +30,7 @@ const DOWNLOAD_LINKS = {
     student: process.env.DOWNLOAD_LINK_STUDENT || 'https://tuolink.com/download/vaultsystemfx.zip'
 };
 
-const LOGO_URL = 'https://drive.google.com/uc?export=view&id=1R-fP3Ma8yxSQ7uxCTlGc8OWqMzItnbNk';
+const LOGO_URL = 'https://i.imgur.com/cV04HTP.png';
 const SUPPORT_EMAIL = 'vaultsystemltd@gmail.com';
 
 const orders = [];
