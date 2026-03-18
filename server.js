@@ -53,7 +53,13 @@ app.get('/', (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 app.post('/api/complete-order', async (req, res) => {
     try {
-        const { firstName, lastName, email, telegram, plan, amount, transactionId } = req.body;
+        // Parse body se arriva come stringa
+        let body = req.body;
+        if (typeof body === 'string') {
+            body = JSON.parse(body);
+        }
+
+        const { firstName, lastName, email, telegram, plan, amount, transactionId } = body;
 
         console.log('📦 Nuovo ordine ricevuto:', { firstName, lastName, email, plan, amount, transactionId });
 
