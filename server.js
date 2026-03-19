@@ -218,7 +218,7 @@ async function sendDownloadEmail(order) {
         .btn-note { font-size: 12px; color: #94a3b8; margin-top: 10px; }
         .divider { height: 1px; background: #f1f3f6; margin: 28px 0; }
         .steps-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8; margin-bottom: 20px; }
-        .step { display: flex; align-items: flex-start; gap: 16px; padding: 16px 0; border-bottom: 1px solid #f1f3f6; }
+        .step { display: flex; align-items: flex-start; gap: 24px; padding: 16px 0; border-bottom: 1px solid #f1f3f6; }
         .step:last-child { border-bottom: none; }
         .step-num { width: 32px; height: 32px; min-width: 32px; border-radius: 10px; background: #f4f5ff; border: 1px solid #e0e1ff; text-align: center; line-height: 32px; font-size: 13px; font-weight: 700; color: #6366f1; }
         .step-content { flex: 1; }
