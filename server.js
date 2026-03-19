@@ -264,7 +264,7 @@ async function sendDownloadEmail(order) {
                     <div class="step-num">2</div>
                     <div class="step-content">
                         <span class="step-title">Scarica e decomprimi</span>
-                        <span class="step-desc">Scarica il file ZIP e estrailo in una cartella a tua scelta.</span>
+                        <span class="step-desc">Scarica il file ZIP sul tuo PC o VPS ed estrailo. Nella cartella troverai il bot e il programma MT5 da installare. MT5 dovr&agrave; restare sempre aperto durante l'utilizzo del bot.</span>
                     </div>
                 </div>
                 <div class="step">
