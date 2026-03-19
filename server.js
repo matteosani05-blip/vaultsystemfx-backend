@@ -296,7 +296,7 @@ async function sendDownloadEmail(order) {
             </div>
 
             <div class="card-footer">
-                <p class="footer-text">© 2025 VaultSystemFx — Tutti i diritti riservati</p>
+                <p class="footer-text">© 2026 VaultSystemFx — Tutti i diritti riservati</p>
                 <p class="footer-text">Questa email è stata inviata a ${order.email}</p>
             </div>
         </div>
