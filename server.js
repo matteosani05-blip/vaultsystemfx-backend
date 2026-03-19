@@ -7,6 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -131,6 +132,32 @@ app.post('/api/crypto-order', async (req, res) => {
     } catch (error) {
         console.error('❌ Errore:', error);
         res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTE: Stripe - Crea Payment Intent
+// ═══════════════════════════════════════════════════════════════
+app.post('/api/create-payment-intent', async (req, res) => {
+    try {
+        const { amount, email, firstName, lastName } = req.body;
+
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100), // Stripe usa centesimi
+            currency: 'eur',
+            receipt_email: email,
+            metadata: {
+                firstName,
+                lastName,
+                email
+            }
+        });
+
+        res.json({ clientSecret: paymentIntent.client_secret });
+
+    } catch (error) {
+        console.error('❌ Stripe error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
