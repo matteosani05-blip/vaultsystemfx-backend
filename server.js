@@ -256,35 +256,35 @@ async function sendDownloadEmail(order) {
                 <div class="step">
                     <div class="step-num">1</div>
                     <div class="step-content">
-                        <span class="step-title">Crea account Fortune Prime Global</span>
+                        <span class="step-title"> Crea account Fortune Prime Global</span>
                         <span class="step-desc">Registrati gratuitamente sul nostro broker partner per utilizzare il bot. <a href="https://portal.fortuneprime.com/getview?view=register&token=0pSM1g" style="color: #6366f1; font-weight: 600;">Clicca qui per registrarti</a></span>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-num">2</div>
                     <div class="step-content">
-                        <span class="step-title">Scarica e decomprimi</span>
+                        <span class="step-title"> Scarica e decomprimi</span>
                         <span class="step-desc">Scarica il file ZIP sul tuo PC o VPS ed estrailo. Nella cartella troverai il bot e il programma MT5 da installare. MT5 dovr&agrave; restare sempre aperto durante l'utilizzo del bot.</span>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-num">3</div>
                     <div class="step-content">
-                        <span class="step-title">Avvia l'applicazione</span>
+                        <span class="step-title"> Avvia l'applicazione</span>
                         <span class="step-desc">Esegui <span class="code">VaultSystemFx.exe</span> come amministratore.</span>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-num">4</div>
                     <div class="step-content">
-                        <span class="step-title">Configura MT5</span>
+                        <span class="step-title"> Configura MT5</span>
                         <span class="step-desc">Inserisci le credenziali del tuo conto MT5 e seleziona i simboli da tradare.</span>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-num">5</div>
                     <div class="step-content">
-                        <span class="step-title">Avvia il bot</span>
+                        <span class="step-title"> Avvia il bot</span>
                         <span class="step-desc">Clicca su "Avvia Bot" e lascia che VaultSystemFx lavori per te.</span>
                     </div>
                 </div>
