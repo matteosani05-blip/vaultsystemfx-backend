@@ -334,23 +334,205 @@ async function sendNotificationEmail(order) {
 async function sendCryptoNotification(order) {
     const notifyEmail = process.env.NOTIFY_EMAIL || process.env.EMAIL_USER;
 
+    // Email all'admin
     await transporter.sendMail({
         from: `"VaultSystemFx Bot" <${process.env.EMAIL_USER}>`,
         to: notifyEmail,
-        subject: `🪙 CRYPTO: Verifica pagamento - ${order.email}`,
+        subject: `🪙 USDT: Verifica pagamento - ${order.firstName} ${order.lastName}`,
         html: `
-            <h2>⚠️ Pagamento Crypto da verificare!</h2>
-            <ul>
-                <li><strong>Cliente:</strong> ${order.firstName} ${order.lastName}</li>
-                <li><strong>Email:</strong> ${order.email}</li>
-                <li><strong>Telegram:</strong> ${order.telegram || 'Non fornito'}</li>
-                <li><strong>Piano:</strong> ${order.plan}</li>
-                <li><strong>Crypto:</strong> ${order.crypto}</li>
-                <li><strong>TxID:</strong> ${order.txId || 'Non fornito'}</li>
-            </ul>
-            <p>Dopo aver verificato, invia manualmente con: <code>POST /api/send-manual</code></p>`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: #f0f2f5; padding: 24px; }
+        .card { max-width: 500px; margin: 0 auto; background: #fff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e5ea; }
+        .header { background: linear-gradient(135deg, #26A17B, #1a7a5c); padding: 24px; text-align: center; }
+        .header h1 { color: #fff; font-size: 18px; margin: 0; }
+        .body { padding: 24px; }
+        .field { margin-bottom: 14px; padding: 12px 16px; background: #f8f9fb; border-radius: 10px; }
+        .field-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .field-value { font-size: 15px; color: #1e293b; font-weight: 600; }
+        .txid { font-family: monospace; font-size: 13px; background: #fef3c7; color: #92400e; padding: 10px 14px; border-radius: 8px; word-break: break-all; }
+        .alert { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 10px; padding: 14px; margin-top: 16px; text-align: center; }
+        .alert p { color: #92400e; font-weight: 600; margin: 0; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <h1>💰 Nuovo Pagamento USDT da Verificare</h1>
+        </div>
+        <div class="body">
+            <div class="field">
+                <div class="field-label">Cliente</div>
+                <div class="field-value">${order.firstName} ${order.lastName}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Email</div>
+                <div class="field-value">${order.email}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Telegram</div>
+                <div class="field-value">${order.telegram || 'Non fornito'}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Piano</div>
+                <div class="field-value">${order.plan} — €${order.amount}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Rete</div>
+                <div class="field-value">${order.network || 'ERC-20'}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Transaction ID (TxID)</div>
+                <div class="txid">${order.txId || 'Non fornito'}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Data ordine</div>
+                <div class="field-value">${new Date(order.createdAt).toLocaleString('it-IT')}</div>
+            </div>
+            <div class="alert">
+                <p>⚠️ Verifica il pagamento e invia il bot manualmente</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`
     });
-    console.log('📧 Notifica crypto inviata');
+    console.log('📧 Notifica crypto inviata all\'admin');
+
+    // Email al cliente
+    await sendCryptoConfirmationToCustomer(order);
+}
+
+async function sendCryptoConfirmationToCustomer(order) {
+    await transporter.sendMail({
+        from: `"VaultSystemFx" <${process.env.EMAIL_USER}>`,
+        to: order.email,
+        subject: '⏳ Ordine ricevuto — Verifica in corso',
+        html: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: #f0f2f5; padding: 32px 16px; }
+        .wrap { max-width: 580px; margin: 0 auto; }
+        .card { background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e5ea; }
+        .card-header { background: #0a0d18; padding: 36px 40px 32px; text-align: center; }
+        .logo-img { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 16px; display: block; }
+        .brand-name { font-size: 20px; font-weight: 700; color: #ffffff; margin-bottom: 20px; letter-spacing: 0.5px; }
+        .badge { display: inline-block; background: rgba(38,161,123,0.2); border: 1px solid rgba(38,161,123,0.35); border-radius: 50px; padding: 5px 14px; font-size: 11px; font-weight: 700; color: #6ee7b7; margin-bottom: 18px; letter-spacing: 0.6px; text-transform: uppercase; }
+        .header-title { font-size: 26px; font-weight: 700; color: #ffffff; line-height: 1.35; margin-bottom: 12px; }
+        .header-sub { font-size: 15px; color: #94a3b8; line-height: 1.65; }
+        .header-sub strong { color: #6ee7b7; font-weight: 600; }
+        .card-body { padding: 36px 40px; }
+        .info-box { background: linear-gradient(135deg, rgba(38,161,123,0.08), rgba(38,161,123,0.02)); border: 1px solid rgba(38,161,123,0.2); border-radius: 14px; padding: 24px; margin-bottom: 24px; }
+        .info-title { font-size: 16px; font-weight: 700; color: #26A17B; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .info-text { font-size: 14px; color: #475569; line-height: 1.7; }
+        .order-details { background: #f8f9fb; border-radius: 14px; padding: 20px 24px; }
+        .order-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e9ebef; }
+        .order-row:last-child { border-bottom: none; }
+        .order-label { font-size: 13px; color: #64748b; }
+        .order-value { font-size: 13px; color: #1e293b; font-weight: 600; }
+        .timeline { margin: 28px 0; }
+        .timeline-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8; margin-bottom: 20px; }
+        .step { display: flex; align-items: center; gap: 16px; padding: 14px 0; }
+        .step-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .step-icon.done { background: #d1fae5; }
+        .step-icon.pending { background: #fef3c7; }
+        .step-icon.waiting { background: #f1f5f9; }
+        .step-text { font-size: 14px; color: #334155; }
+        .step-text.muted { color: #94a3b8; }
+        .support { background: #f8fffe; border: 1px solid #d1fae5; border-radius: 14px; padding: 22px 24px; text-align: center; }
+        .support p { font-size: 14px; color: #065f46; font-weight: 600; margin-bottom: 6px; }
+        .support a { font-size: 14px; color: #059669 !important; font-weight: 500; text-decoration: none; }
+        .card-footer { background: #f8f9fb; border-top: 1px solid #e9ebef; padding: 20px 40px; text-align: center; }
+        .footer-text { font-size: 12px; color: #94a3b8; line-height: 1.8; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="card-header">
+                <img src="${LOGO_URL}" alt="VaultSystemFx Logo" class="logo-img" />
+                <div class="brand-name">VaultSystemFx</div>
+                <div class="badge">Ordine ricevuto</div>
+                <div class="header-title">Grazie ${order.firstName || 'Trader'}!</div>
+                <p class="header-sub">Abbiamo ricevuto il tuo ordine e stiamo verificando<br>il pagamento <strong>USDT</strong> sulla rete <strong>ERC-20</strong>.</p>
+            </div>
+
+            <div class="card-body">
+                <div class="info-box">
+                    <div class="info-title">⏳ Verifica in corso</div>
+                    <div class="info-text">
+                        Stiamo controllando la transazione sulla blockchain Ethereum.
+                        Una volta confermato il pagamento, riceverai un'email con il link per scaricare <strong>VaultSystemFx</strong>.
+                        <br><br>
+                        <strong>Tempo stimato:</strong> entro 24 ore (solitamente molto meno)
+                    </div>
+                </div>
+
+                <div class="order-details">
+                    <div class="order-row">
+                        <span class="order-label">Prodotto</span>
+                        <span class="order-value">VaultSystemFx</span>
+                    </div>
+                    <div class="order-row">
+                        <span class="order-label">Piano</span>
+                        <span class="order-value">${order.plan}</span>
+                    </div>
+                    <div class="order-row">
+                        <span class="order-label">Importo</span>
+                        <span class="order-value">${order.amount} USDT</span>
+                    </div>
+                    <div class="order-row">
+                        <span class="order-label">Rete</span>
+                        <span class="order-value">ERC-20 (Ethereum)</span>
+                    </div>
+                    <div class="order-row">
+                        <span class="order-label">TxID</span>
+                        <span class="order-value" style="font-family: monospace; font-size: 11px; word-break: break-all;">${order.txId || 'Non fornito'}</span>
+                    </div>
+                </div>
+
+                <div class="timeline">
+                    <div class="timeline-title">Stato ordine</div>
+                    <div class="step">
+                        <div class="step-icon done">✓</div>
+                        <div class="step-text">Ordine ricevuto</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-icon pending">⏳</div>
+                        <div class="step-text">Verifica pagamento in corso...</div>
+                    </div>
+                    <div class="step">
+                        <div class="step-icon waiting">📦</div>
+                        <div class="step-text muted">Invio link download</div>
+                    </div>
+                </div>
+
+                <div class="support">
+                    <p>Hai bisogno di assistenza?</p>
+                    <a href="mailto:${SUPPORT_EMAIL}">✉️ ${SUPPORT_EMAIL}</a>
+                    <br><br>
+                    <a href="https://t.me/AssistenzaVaultSystem">💬 @AssistenzaVaultSystem su Telegram</a>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <p class="footer-text">© 2026 VaultSystemFx — Tutti i diritti riservati</p>
+                <p class="footer-text">Questa email è stata inviata a ${order.email}</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`
+    });
+    console.log(`📧 Email conferma ordine crypto inviata a ${order.email}`);
 }
 
 // ═══════════════════════════════════════════════════════════════
