@@ -382,7 +382,7 @@ async function sendCryptoNotification(order) {
             </div>
             <div class="field">
                 <div class="field-label">Rete</div>
-                <div class="field-value">${order.network || 'ERC-20'}</div>
+                <div class="field-value">${order.network || 'TRC-20'}</div>
             </div>
             <div class="field">
                 <div class="field-label">Transaction ID (TxID)</div>
@@ -462,14 +462,14 @@ async function sendCryptoConfirmationToCustomer(order) {
                 <div class="brand-name">VaultSystemFx</div>
                 <div class="badge">Ordine ricevuto</div>
                 <div class="header-title">Grazie ${order.firstName || 'Trader'}!</div>
-                <p class="header-sub">Abbiamo ricevuto il tuo ordine e stiamo verificando<br>il pagamento <strong>USDT</strong> sulla rete <strong>ERC-20</strong>.</p>
+                <p class="header-sub">Abbiamo ricevuto il tuo ordine e stiamo verificando<br>il pagamento <strong>USDT</strong> sulla rete <strong>TRC-20</strong>.</p>
             </div>
 
             <div class="card-body">
                 <div class="info-box">
                     <div class="info-title">⏳ Verifica in corso</div>
                     <div class="info-text">
-                        Stiamo controllando la transazione sulla blockchain Ethereum.
+                        Stiamo controllando la transazione sulla blockchain Tron.
                         Una volta confermato il pagamento, riceverai un'email con il link per scaricare <strong>VaultSystemFx</strong>.
                         <br><br>
                         <strong>Tempo stimato:</strong> entro 24 ore (solitamente molto meno)
@@ -491,7 +491,7 @@ async function sendCryptoConfirmationToCustomer(order) {
                     </div>
                     <div class="order-row">
                         <span class="order-label">Rete</span>
-                        <span class="order-value">ERC-20 (Ethereum)</span>
+                        <span class="order-value">TRC-20 (Tron)</span>
                     </div>
                     <div class="order-row">
                         <span class="order-label">TxID</span>
