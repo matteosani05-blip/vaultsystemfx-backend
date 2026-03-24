@@ -421,36 +421,42 @@ async function sendCryptoConfirmationToCustomer(order) {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: #f0f2f5; padding: 32px 16px; }
         .wrap { max-width: 580px; margin: 0 auto; }
-        .card { background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e5ea; }
-        .card-header { background: #0a0d18; padding: 36px 40px 32px; text-align: center; }
-        .logo-img { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 16px; display: block; }
-        .brand-name { font-size: 20px; font-weight: 700; color: #ffffff; margin-bottom: 20px; letter-spacing: 0.5px; }
-        .badge { display: inline-block; background: rgba(38,161,123,0.2); border: 1px solid rgba(38,161,123,0.35); border-radius: 50px; padding: 5px 14px; font-size: 11px; font-weight: 700; color: #6ee7b7; margin-bottom: 18px; letter-spacing: 0.6px; text-transform: uppercase; }
-        .header-title { font-size: 26px; font-weight: 700; color: #ffffff; line-height: 1.35; margin-bottom: 12px; }
-        .header-sub { font-size: 15px; color: #94a3b8; line-height: 1.65; }
+        .card { background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+        .card-header { background: linear-gradient(135deg, #0a0d18 0%, #1a1f2e 100%); padding: 40px; text-align: center; }
+        .logo-img { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 16px; display: block; border: 3px solid rgba(38,161,123,0.4); }
+        .brand-name { font-size: 22px; font-weight: 700; color: #ffffff; margin-bottom: 20px; letter-spacing: 0.5px; }
+        .badge { display: inline-block; background: rgba(38,161,123,0.2); border: 1px solid rgba(38,161,123,0.4); border-radius: 50px; padding: 8px 20px; font-size: 12px; font-weight: 700; color: #6ee7b7; margin-bottom: 20px; letter-spacing: 1px; text-transform: uppercase; }
+        .header-title { font-size: 28px; font-weight: 800; color: #ffffff; line-height: 1.3; margin-bottom: 12px; }
+        .header-sub { font-size: 15px; color: #94a3b8; line-height: 1.7; }
         .header-sub strong { color: #6ee7b7; font-weight: 600; }
-        .card-body { padding: 36px 40px; }
-        .info-box { background: linear-gradient(135deg, rgba(38,161,123,0.08), rgba(38,161,123,0.02)); border: 1px solid rgba(38,161,123,0.2); border-radius: 14px; padding: 24px; margin-bottom: 24px; }
-        .info-title { font-size: 16px; font-weight: 700; color: #26A17B; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .info-text { font-size: 14px; color: #475569; line-height: 1.7; }
-        .order-details { background: #f8f9fb; border-radius: 14px; padding: 20px 24px; }
-        .order-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e9ebef; }
+        .card-body { padding: 40px; }
+        .info-box { background: linear-gradient(135deg, rgba(38,161,123,0.1), rgba(38,161,123,0.03)); border: 1px solid rgba(38,161,123,0.25); border-radius: 16px; padding: 24px; margin-bottom: 28px; }
+        .info-title { font-size: 17px; font-weight: 700; color: #26A17B; margin-bottom: 14px; }
+        .info-text { font-size: 14px; color: #475569; line-height: 1.8; }
+        .order-details { background: #f8f9fb; border-radius: 16px; padding: 8px 0; }
+        .order-row { display: table; width: 100%; padding: 14px 24px; border-bottom: 1px solid #e9ebef; }
         .order-row:last-child { border-bottom: none; }
-        .order-label { font-size: 13px; color: #64748b; }
-        .order-value { font-size: 13px; color: #1e293b; font-weight: 600; }
-        .timeline { margin: 28px 0; }
-        .timeline-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8; margin-bottom: 20px; }
-        .step { display: flex; align-items: center; gap: 16px; padding: 14px 0; }
-        .step-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-        .step-icon.done { background: #d1fae5; }
-        .step-icon.pending { background: #fef3c7; }
-        .step-icon.waiting { background: #f1f5f9; }
-        .step-text { font-size: 14px; color: #334155; }
-        .step-text.muted { color: #94a3b8; }
-        .support { background: #f8fffe; border: 1px solid #d1fae5; border-radius: 14px; padding: 22px 24px; text-align: center; }
-        .support p { font-size: 14px; color: #065f46; font-weight: 600; margin-bottom: 6px; }
-        .support a { font-size: 14px; color: #059669 !important; font-weight: 500; text-decoration: none; }
-        .card-footer { background: #f8f9fb; border-top: 1px solid #e9ebef; padding: 20px 40px; text-align: center; }
+        .order-label { display: table-cell; width: 120px; font-size: 14px; color: #64748b; font-weight: 500; vertical-align: middle; }
+        .order-value { display: table-cell; font-size: 14px; color: #1e293b; font-weight: 600; text-align: right; vertical-align: middle; }
+        .timeline { margin: 32px 0; padding: 0 8px; }
+        .timeline-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 24px; text-align: center; }
+        .steps-container { display: table; width: 100%; }
+        .step { display: table-row; }
+        .step-icon-cell { display: table-cell; width: 56px; vertical-align: top; padding: 8px 0; }
+        .step-content { display: table-cell; vertical-align: middle; padding: 12px 0 12px 8px; border-bottom: 1px solid #f1f5f9; }
+        .step:last-child .step-content { border-bottom: none; }
+        .step-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .step-icon.done { background: linear-gradient(135deg, #10b981, #34d399); color: white; }
+        .step-icon.pending { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: white; }
+        .step-icon.waiting { background: #e2e8f0; color: #94a3b8; }
+        .step-title { font-size: 14px; font-weight: 600; color: #334155; margin-bottom: 2px; }
+        .step-title.muted { color: #94a3b8; }
+        .step-desc { font-size: 12px; color: #94a3b8; }
+        .support { background: linear-gradient(135deg, #f0fdf9, #f8fffe); border: 1px solid #d1fae5; border-radius: 16px; padding: 28px; text-align: center; margin-top: 8px; }
+        .support-title { font-size: 15px; color: #065f46; font-weight: 700; margin-bottom: 16px; }
+        .support-links { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+        .support-link { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: white; border: 1px solid #d1fae5; border-radius: 10px; font-size: 13px; color: #059669; font-weight: 600; text-decoration: none; transition: all 0.2s; }
+        .card-footer { background: #f8f9fb; border-top: 1px solid #e9ebef; padding: 24px 40px; text-align: center; }
         .footer-text { font-size: 12px; color: #94a3b8; line-height: 1.8; }
     </style>
 </head>
@@ -460,7 +466,7 @@ async function sendCryptoConfirmationToCustomer(order) {
             <div class="card-header">
                 <img src="${LOGO_URL}" alt="VaultSystemFx Logo" class="logo-img" />
                 <div class="brand-name">VaultSystemFx</div>
-                <div class="badge">Ordine ricevuto</div>
+                <div class="badge">✓ Ordine ricevuto</div>
                 <div class="header-title">Grazie ${order.firstName || 'Trader'}!</div>
                 <p class="header-sub">Abbiamo ricevuto il tuo ordine e stiamo verificando<br>il pagamento <strong>USDT</strong> sulla rete <strong>TRC-20</strong>.</p>
             </div>
@@ -495,37 +501,55 @@ async function sendCryptoConfirmationToCustomer(order) {
                     </div>
                     <div class="order-row">
                         <span class="order-label">TxID</span>
-                        <span class="order-value" style="font-family: monospace; font-size: 11px; word-break: break-all;">${order.txId || 'Non fornito'}</span>
+                        <span class="order-value" style="font-family: 'Courier New', monospace; font-size: 12px; word-break: break-all; max-width: 280px;">${order.txId || 'Non fornito'}</span>
                     </div>
                 </div>
 
                 <div class="timeline">
-                    <div class="timeline-title">Stato ordine</div>
-                    <div class="step">
-                        <div class="step-icon done">✓</div>
-                        <div class="step-text">Ordine ricevuto</div>
-                    </div>
-                    <div class="step">
-                        <div class="step-icon pending">⏳</div>
-                        <div class="step-text">Verifica pagamento in corso...</div>
-                    </div>
-                    <div class="step">
-                        <div class="step-icon waiting">📦</div>
-                        <div class="step-text muted">Invio link download</div>
+                    <div class="timeline-title">Stato del tuo ordine</div>
+                    <div class="steps-container">
+                        <div class="step">
+                            <div class="step-icon-cell">
+                                <div class="step-icon done">✓</div>
+                            </div>
+                            <div class="step-content">
+                                <div class="step-title">Ordine ricevuto</div>
+                                <div class="step-desc">Abbiamo registrato il tuo ordine</div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon-cell">
+                                <div class="step-icon pending">⧗</div>
+                            </div>
+                            <div class="step-content">
+                                <div class="step-title">Verifica pagamento</div>
+                                <div class="step-desc">Stiamo controllando la transazione</div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon-cell">
+                                <div class="step-icon waiting">↓</div>
+                            </div>
+                            <div class="step-content">
+                                <div class="step-title muted">Invio download</div>
+                                <div class="step-desc">Riceverai il link via email</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="support">
-                    <p>Hai bisogno di assistenza?</p>
-                    <a href="mailto:${SUPPORT_EMAIL}">✉️ ${SUPPORT_EMAIL}</a>
-                    <br><br>
-                    <a href="https://t.me/AssistenzaVaultSystem">💬 @AssistenzaVaultSystem su Telegram</a>
+                    <div class="support-title">Hai bisogno di assistenza?</div>
+                    <div class="support-links">
+                        <a href="mailto:${SUPPORT_EMAIL}" class="support-link">✉️ Email</a>
+                        <a href="https://t.me/AssistenzaVaultSystem" class="support-link">💬 Telegram</a>
+                    </div>
                 </div>
             </div>
 
             <div class="card-footer">
                 <p class="footer-text">© 2026 VaultSystemFx — Tutti i diritti riservati</p>
-                <p class="footer-text">Questa email è stata inviata a ${order.email}</p>
+                <p class="footer-text">Email inviata a ${order.email}</p>
             </div>
         </div>
     </div>
