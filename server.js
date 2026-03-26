@@ -27,12 +27,12 @@ const transporter = nodemailer.createTransport({
 });
 
 const DOWNLOAD_LINKS = {
-    standard: process.env.DOWNLOAD_LINK_STANDARD || 'https://www.dropbox.com/scl/fi/l5n3cysy5kyeh0525f8la/test.zip?rlkey=p49q4d2nkvjsvkssig946tn38&st=3gz0e6hp&dl=1',
-    student: process.env.DOWNLOAD_LINK_STUDENT || 'https://www.dropbox.com/scl/fi/l5n3cysy5kyeh0525f8la/test.zip?rlkey=p49q4d2nkvjsvkssig946tn38&st=3gz0e6hp&dl=1'
+    standard: process.env.DOWNLOAD_LINK_STANDARD || 'https://www.dropbox.com/scl/fi/5zkf3d6cq9cwz5eshisi2/VaultSystemFx_Bot.zip?rlkey=dxqomeboxcpsfuwlb5pw99w6g&st=6458skrb&dl=1',
+    student: process.env.DOWNLOAD_LINK_STUDENT || 'https://www.dropbox.com/scl/fi/5zkf3d6cq9cwz5eshisi2/VaultSystemFx_Bot.zip?rlkey=dxqomeboxcpsfuwlb5pw99w6g&st=6458skrb&dl=1'
 };
 
 const LOGO_URL = 'https://i.imgur.com/cV04HTP.png';
-const SUPPORT_EMAIL = 'vaultsystemltd@gmail.com';
+const SUPPORT_EMAIL = 'vaultsystemassistence@gmail.com';
 
 const orders = [];
 
