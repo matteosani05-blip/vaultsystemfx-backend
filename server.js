@@ -31,6 +31,14 @@ const DOWNLOAD_LINKS = {
     student: process.env.DOWNLOAD_LINK_STUDENT || 'https://www.dropbox.com/scl/fi/5zkf3d6cq9cwz5eshisi2/VaultSystemFx_Bot.zip?rlkey=dxqomeboxcpsfuwlb5pw99w6g&st=6458skrb&dl=1'
 };
 
+// Codici sconto (nascosti lato server - non visibili nel frontend)
+// discount = quanto sottrarre dal prezzo EUR (499), discountUSDT = quanto sottrarre da USDT (579)
+const DISCOUNT_CODES = {
+    'MATTH50': { discount: 349, discountUSDT: 405 },
+    'FREE100': { discount: 499, discountUSDT: 579 },
+    'SAN1': { discount: 498, discountUSDT: 578 }
+};
+
 const LOGO_URL = 'https://i.imgur.com/cV04HTP.png';
 const SUPPORT_EMAIL = 'vaultsystemassistence@gmail.com';
 
@@ -48,6 +56,35 @@ app.get('/', (req, res) => {
             webhook: 'POST /api/paypal-webhook'
         }
     });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTE: Valida Codice Sconto
+// ═══════════════════════════════════════════════════════════════
+app.post('/api/validate-discount', (req, res) => {
+    try {
+        const { code } = req.body;
+
+        if (!code || typeof code !== 'string') {
+            return res.json({ valid: false });
+        }
+
+        const upperCode = code.trim().toUpperCase();
+        const discountData = DISCOUNT_CODES[upperCode];
+
+        if (discountData) {
+            res.json({
+                valid: true,
+                discount: discountData.discount,
+                discountUSDT: discountData.discountUSDT
+            });
+        } else {
+            res.json({ valid: false });
+        }
+    } catch (error) {
+        console.error('❌ Errore validazione sconto:', error);
+        res.json({ valid: false });
+    }
 });
 
 // ═══════════════════════════════════════════════════════════════
