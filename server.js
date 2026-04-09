@@ -111,6 +111,9 @@ async function createLicense(email, firstName, lastName, discountCode) {
     try {
         if (licensesCollection) {
             await licensesCollection.insertOne(license);
+            console.log(`✅ Licenza salvata su MongoDB: ${licenseKey}`);
+        } else {
+            console.error('❌ MongoDB non connesso! licensesCollection è null');
         }
     } catch (error) {
         console.error('❌ Errore salvataggio licenza:', error);
