@@ -27,8 +27,10 @@ const transporter = nodemailer.createTransport({
 });
 
 const DOWNLOAD_LINKS = {
+    // Versione STANDARD (prezzo pieno) - senza controllo licenza
     standard: process.env.DOWNLOAD_LINK_STANDARD || 'https://www.dropbox.com/scl/fi/5zkf3d6cq9cwz5eshisi2/VaultSystemFx_Bot.zip?rlkey=dxqomeboxcpsfuwlb5pw99w6g&st=6458skrb&dl=1',
-    student: process.env.DOWNLOAD_LINK_STUDENT || 'https://www.dropbox.com/scl/fi/5zkf3d6cq9cwz5eshisi2/VaultSystemFx_Bot.zip?rlkey=dxqomeboxcpsfuwlb5pw99w6g&st=6458skrb&dl=1'
+    // Versione ACADEMY (MATTH50) - CON controllo licenza
+    student: process.env.DOWNLOAD_LINK_STUDENT || 'INSERISCI_LINK_DROPBOX_ACADEMY_QUI'
 };
 
 // Codici sconto (nascosti lato server - non visibili nel frontend)
@@ -45,6 +47,44 @@ const SUPPORT_EMAIL = 'vaultsystemassistence@gmail.com';
 const orders = [];
 
 // ═══════════════════════════════════════════════════════════════
+// SISTEMA LICENZE (per studenti Academy - codice MATTH50)
+// ═══════════════════════════════════════════════════════════════
+const licenses = new Map(); // In produzione usare un database
+
+function generateLicenseKey() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const segments = [];
+    for (let s = 0; s < 4; s++) {
+        let segment = '';
+        for (let i = 0; i < 5; i++) {
+            segment += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        segments.push(segment);
+    }
+    return 'VSF-' + segments.join('-'); // Es: VSF-A1B2C-D3E4F-G5H6I-J7K8L
+}
+
+function createLicense(email, firstName, lastName, discountCode) {
+    const licenseKey = generateLicenseKey();
+    const license = {
+        key: licenseKey,
+        email: email.toLowerCase(),
+        firstName,
+        lastName,
+        discountCode,
+        activations: 0,
+        maxActivations: 1, // Una sola attivazione per licenza
+        hwid: null, // Hardware ID del PC su cui viene attivato
+        createdAt: new Date().toISOString(),
+        activatedAt: null,
+        status: 'pending' // pending, active, revoked
+    };
+    licenses.set(licenseKey, license);
+    console.log(`🔑 Licenza creata: ${licenseKey} per ${email}`);
+    return license;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // ROUTE: Home
 // ═══════════════════════════════════════════════════════════════
 app.get('/', (req, res) => {
@@ -53,9 +93,156 @@ app.get('/', (req, res) => {
         service: 'VaultSystemFx Backend',
         endpoints: {
             completeOrder: 'POST /api/complete-order',
-            webhook: 'POST /api/paypal-webhook'
+            webhook: 'POST /api/paypal-webhook',
+            validateLicense: 'POST /api/validate-license',
+            licenseInfo: 'GET /api/license-info/:key (admin)',
+            revokeLicense: 'POST /api/revoke-license (admin)',
+            resetLicenseHwid: 'POST /api/reset-license-hwid (admin)',
+            listLicenses: 'GET /api/licenses (admin)'
         }
     });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTE: Lista Licenze (per admin)
+// ═══════════════════════════════════════════════════════════════
+app.get('/api/licenses', (req, res) => {
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY) {
+        return res.status(401).json({ error: 'Non autorizzato' });
+    }
+
+    const allLicenses = Array.from(licenses.values()).map(l => ({
+        key: l.key,
+        email: l.email,
+        firstName: l.firstName,
+        status: l.status,
+        activations: l.activations,
+        createdAt: l.createdAt,
+        activatedAt: l.activatedAt
+    }));
+
+    res.json({ count: allLicenses.length, licenses: allLicenses });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTE: Valida Licenza (chiamato dal bot)
+// ═══════════════════════════════════════════════════════════════
+app.post('/api/validate-license', (req, res) => {
+    try {
+        const { licenseKey, hwid } = req.body;
+
+        if (!licenseKey) {
+            return res.json({ valid: false, error: 'Chiave licenza mancante' });
+        }
+
+        const license = licenses.get(licenseKey.toUpperCase());
+
+        if (!license) {
+            return res.json({ valid: false, error: 'Chiave licenza non valida' });
+        }
+
+        if (license.status === 'revoked') {
+            return res.json({ valid: false, error: 'Licenza revocata' });
+        }
+
+        // Prima attivazione: salva l'HWID
+        if (license.status === 'pending' && hwid) {
+            license.hwid = hwid;
+            license.status = 'active';
+            license.activatedAt = new Date().toISOString();
+            license.activations = 1;
+            console.log(`✅ Licenza ${licenseKey} attivata su HWID: ${hwid}`);
+            return res.json({
+                valid: true,
+                message: 'Licenza attivata con successo',
+                firstName: license.firstName
+            });
+        }
+
+        // Già attivata: verifica HWID
+        if (license.status === 'active') {
+            if (license.hwid === hwid) {
+                return res.json({
+                    valid: true,
+                    message: 'Licenza valida',
+                    firstName: license.firstName
+                });
+            } else {
+                return res.json({
+                    valid: false,
+                    error: 'Licenza già attivata su un altro dispositivo. Contatta il supporto per assistenza.'
+                });
+            }
+        }
+
+        return res.json({ valid: false, error: 'Stato licenza non valido' });
+
+    } catch (error) {
+        console.error('❌ Errore validazione licenza:', error);
+        res.json({ valid: false, error: 'Errore interno' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTE: Info Licenza (per admin)
+// ═══════════════════════════════════════════════════════════════
+app.get('/api/license-info/:key', (req, res) => {
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY) {
+        return res.status(401).json({ error: 'Non autorizzato' });
+    }
+
+    const license = licenses.get(req.params.key.toUpperCase());
+    if (!license) {
+        return res.status(404).json({ error: 'Licenza non trovata' });
+    }
+
+    res.json(license);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTE: Revoca Licenza (per admin)
+// ═══════════════════════════════════════════════════════════════
+app.post('/api/revoke-license', (req, res) => {
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY) {
+        return res.status(401).json({ error: 'Non autorizzato' });
+    }
+
+    const { licenseKey } = req.body;
+    const license = licenses.get(licenseKey.toUpperCase());
+
+    if (!license) {
+        return res.status(404).json({ error: 'Licenza non trovata' });
+    }
+
+    license.status = 'revoked';
+    console.log(`🚫 Licenza revocata: ${licenseKey}`);
+    res.json({ success: true, message: 'Licenza revocata' });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTE: Reset HWID Licenza (per admin - permette nuova attivazione)
+// ═══════════════════════════════════════════════════════════════
+app.post('/api/reset-license-hwid', (req, res) => {
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY) {
+        return res.status(401).json({ error: 'Non autorizzato' });
+    }
+
+    const { licenseKey } = req.body;
+    const license = licenses.get(licenseKey.toUpperCase());
+
+    if (!license) {
+        return res.status(404).json({ error: 'Licenza non trovata' });
+    }
+
+    license.hwid = null;
+    license.status = 'pending';
+    license.activatedAt = null;
+    console.log(`🔄 HWID reset per licenza: ${licenseKey}`);
+    res.json({ success: true, message: 'HWID resettato, licenza pronta per nuova attivazione' });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -98,7 +285,7 @@ app.post('/api/complete-order', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Body vuoto' });
         }
 
-        const { firstName, lastName, email, telegram, plan, amount, transactionId } = body;
+        const { firstName, lastName, email, telegram, plan, amount, transactionId, discountCode } = body;
 
         if (!email) {
             return res.status(400).json({ success: false, error: 'Email mancante' });
@@ -108,11 +295,25 @@ app.post('/api/complete-order', async (req, res) => {
             id: Date.now(),
             firstName, lastName, email, telegram,
             plan, amount, transactionId,
+            discountCode: discountCode ? discountCode.toUpperCase() : null,
             createdAt: new Date().toISOString()
         };
+
+        // Se usa codice MATTH50 (Academy), genera licenza
+        let license = null;
+        if (order.discountCode === 'MATTH50') {
+            license = createLicense(email, firstName, lastName, order.discountCode);
+            order.licenseKey = license.key;
+        }
+
         orders.push(order);
 
-        await sendDownloadEmail(order);
+        // Invia email appropriata (con o senza licenza)
+        if (license) {
+            await sendDownloadEmailWithLicense(order, license);
+        } else {
+            await sendDownloadEmail(order);
+        }
         await sendNotificationEmail(order);
 
         res.json({ success: true, message: 'Ordine completato e email inviata!' });
@@ -223,6 +424,142 @@ app.post('/api/send-manual', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // FUNZIONI EMAIL
 // ═══════════════════════════════════════════════════════════════
+
+// Email con Licenza (per studenti Academy - MATTH50)
+async function sendDownloadEmailWithLicense(order, license) {
+    const downloadLink = DOWNLOAD_LINKS.student || DOWNLOAD_LINKS.standard;
+
+    const mailOptions = {
+        from: `"VaultSystemFx" <${process.env.EMAIL_USER}>`,
+        to: order.email,
+        subject: '✅ Il tuo VaultSystemFx Academy Edition + Chiave Licenza',
+        html: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: #f0f2f5; padding: 32px 16px; }
+        .wrap { max-width: 580px; margin: 0 auto; }
+        .card { background: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e5ea; }
+        .card-header { background: linear-gradient(135deg, #0a0d18 0%, #1a1f2e 100%); padding: 36px 40px 32px; text-align: center; }
+        .logo-img { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 16px; display: block; }
+        .brand-name { font-size: 20px; font-weight: 700; color: #ffffff; margin-bottom: 20px; letter-spacing: 0.5px; }
+        .badge { display: inline-block; background: rgba(34,197,94,0.2); border: 1px solid rgba(34,197,94,0.35); border-radius: 50px; padding: 5px 14px; font-size: 11px; font-weight: 700; color: #86efac; margin-bottom: 18px; letter-spacing: 0.6px; text-transform: uppercase; }
+        .header-title { font-size: 26px; font-weight: 700; color: #ffffff; line-height: 1.35; margin-bottom: 12px; }
+        .header-sub { font-size: 15px; color: #94a3b8; line-height: 1.65; }
+        .header-sub strong { color: #86efac; font-weight: 600; }
+        .card-body { padding: 36px 40px; }
+
+        .license-box { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 16px; padding: 24px; margin-bottom: 28px; text-align: center; }
+        .license-title { font-size: 14px; font-weight: 700; color: #92400e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+        .license-key { font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #78350f; background: rgba(255,255,255,0.6); padding: 14px 20px; border-radius: 10px; letter-spacing: 2px; word-break: break-all; }
+        .license-note { font-size: 12px; color: #92400e; margin-top: 12px; line-height: 1.5; }
+
+        .btn-wrap { text-align: center; margin-bottom: 32px; }
+        .btn { display: inline-block; padding: 15px 44px; background: #22c55e; color: #ffffff !important; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 12px; }
+        .btn-note { font-size: 12px; color: #94a3b8; margin-top: 10px; }
+        .divider { height: 1px; background: #f1f3f6; margin: 28px 0; }
+        .steps-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8; margin-bottom: 20px; }
+        .step { display: flex; align-items: flex-start; gap: 20px; padding: 16px 0; border-bottom: 1px solid #f1f3f6; }
+        .step:last-child { border-bottom: none; }
+        .step-num { width: 32px; height: 32px; min-width: 32px; border-radius: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; text-align: center; line-height: 32px; font-size: 13px; font-weight: 700; color: #22c55e; margin-right: 16px; }
+        .step-content { flex: 1; }
+        .step-title { font-size: 14px; font-weight: 600; color: #1e293b; display: block; margin-bottom: 4px; }
+        .step-desc { font-size: 13px; color: #64748b; line-height: 1.5; }
+        .code { background: #f0fdf4; color: #22c55e; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+        .support { background: #f8fffe; border: 1px solid #d1fae5; border-radius: 14px; padding: 22px 24px; margin-top: 28px; text-align: center; }
+        .support p { font-size: 14px; color: #065f46; font-weight: 600; margin-bottom: 6px; }
+        .support a { font-size: 14px; color: #059669 !important; font-weight: 500; text-decoration: none; }
+        .card-footer { background: #f8f9fb; border-top: 1px solid #e9ebef; padding: 20px 40px; text-align: center; }
+        .footer-text { font-size: 12px; color: #94a3b8; line-height: 1.8; }
+
+        .warning-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px 20px; margin-top: 24px; }
+        .warning-box p { font-size: 13px; color: #dc2626; line-height: 1.6; }
+        .warning-box strong { color: #991b1b; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="card-header">
+                <img src="${LOGO_URL}" alt="VaultSystemFx Logo" class="logo-img" />
+                <div class="brand-name">VaultSystemFx</div>
+                <div class="badge">Academy Edition</div>
+                <div class="header-title">Benvenuto nell'Academy,<br>${order.firstName || 'Trader'}!</div>
+                <p class="header-sub">Grazie per far parte della <strong>Trading Academy</strong>.<br>Ecco il tuo bot con licenza personale.</p>
+            </div>
+
+            <div class="card-body">
+                <div class="license-box">
+                    <div class="license-title">La tua Chiave Licenza Personale</div>
+                    <div class="license-key">${license.key}</div>
+                    <p class="license-note">Conserva questa chiave! Ti servira per attivare il bot.<br>La licenza e valida per UN SOLO dispositivo.</p>
+                </div>
+
+                <div class="btn-wrap">
+                    <a href="${downloadLink}" class="btn">Scarica VaultSystemFx</a>
+                    <p class="btn-note">File ZIP — compatibile con Windows</p>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="steps-label">Come attivare il bot</div>
+
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <span class="step-title">Crea account Fortune Prime Global</span>
+                        <span class="step-desc">Registrati gratuitamente sul nostro broker partner. <a href="https://portal.fortuneprime.com/getview?view=register&token=0pSM1g" style="color: #22c55e; font-weight: 600;">Clicca qui per registrarti</a></span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <span class="step-title">Scarica e decomprimi</span>
+                        <span class="step-desc">Scarica il file ZIP sul tuo PC o VPS ed estrailo.</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <span class="step-title">Avvia e inserisci la licenza</span>
+                        <span class="step-desc">Esegui <span class="code">VaultSystemFx.exe</span> come amministratore e inserisci la chiave licenza quando richiesto.</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-content">
+                        <span class="step-title">Configura e avvia</span>
+                        <span class="step-desc">Inserisci le credenziali MT5, seleziona i simboli e clicca "Avvia Bot".</span>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <p><strong>IMPORTANTE:</strong> La licenza e personale e non trasferibile. E collegata al tuo dispositivo al primo avvio. La condivisione o rivendita comportera la revoca immediata della licenza.</p>
+                </div>
+
+                <div class="support">
+                    <p>Hai bisogno di supporto?</p>
+                    <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <p class="footer-text">© 2026 VaultSystemFx — Tutti i diritti riservati</p>
+                <p class="footer-text">Questa email e stata inviata a ${order.email}</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Email con licenza inviata a ${order.email} - Licenza: ${license.key}`);
+}
 
 async function sendDownloadEmail(order) {
     const downloadLink = DOWNLOAD_LINKS[order.plan] || DOWNLOAD_LINKS.standard;
@@ -348,11 +685,12 @@ async function sendDownloadEmail(order) {
 
 async function sendNotificationEmail(order) {
     const notifyEmail = process.env.NOTIFY_EMAIL || process.env.EMAIL_USER;
+    const isAcademy = order.discountCode === 'MATTH50';
 
     await transporter.sendMail({
         from: `"VaultSystemFx Bot" <${process.env.EMAIL_USER}>`,
         to: notifyEmail,
-        subject: `💰 Nuovo acquisto: ${order.plan} - €${order.amount}`,
+        subject: `💰 Nuovo acquisto${isAcademy ? ' ACADEMY' : ''}: ${order.plan} - €${order.amount}`,
         html: `
             <h2>Nuovo ordine ricevuto!</h2>
             <ul>
@@ -361,9 +699,12 @@ async function sendNotificationEmail(order) {
                 <li><strong>Telegram:</strong> ${order.telegram || 'Non fornito'}</li>
                 <li><strong>Piano:</strong> ${order.plan}</li>
                 <li><strong>Importo:</strong> €${order.amount}</li>
+                <li><strong>Codice Sconto:</strong> ${order.discountCode || 'Nessuno'}</li>
+                ${order.licenseKey ? `<li><strong style="color: #22c55e;">🔑 Licenza Generata:</strong> ${order.licenseKey}</li>` : ''}
                 <li><strong>Transaction ID:</strong> ${order.transactionId}</li>
                 <li><strong>Data:</strong> ${order.createdAt}</li>
-            </ul>`
+            </ul>
+            ${isAcademy ? '<p style="background: #fef3c7; padding: 10px; border-radius: 8px; color: #92400e;"><strong>⚠️ ACADEMY:</strong> Questo cliente ha una licenza con limite di 1 attivazione. Se ha problemi, usa /api/reset-license-hwid per resettare.</p>' : ''}`
     });
     console.log('📧 Notifica inviata');
 }
