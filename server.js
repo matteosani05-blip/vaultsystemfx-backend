@@ -8,6 +8,34 @@ const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { MongoClient } = require('mongodb');
+
+// ═══════════════════════════════════════════════════════════════
+// MONGODB CONNECTION
+// ═══════════════════════════════════════════════════════════════
+let db = null;
+let licensesCollection = null;
+
+async function connectDB() {
+    if (db) return db;
+    try {
+        const client = new MongoClient(process.env.MONGODB_URI);
+        await client.connect();
+        db = client.db('vaultsystemfx');
+        licensesCollection = db.collection('licenses');
+        // Crea indice per ricerca veloce
+        await licensesCollection.createIndex({ key: 1 }, { unique: true });
+        await licensesCollection.createIndex({ email: 1 });
+        console.log('✅ MongoDB connesso');
+        return db;
+    } catch (error) {
+        console.error('❌ Errore connessione MongoDB:', error);
+        return null;
+    }
+}
+
+// Connetti all'avvio
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,7 +77,6 @@ const orders = [];
 // ═══════════════════════════════════════════════════════════════
 // SISTEMA LICENZE (per studenti Academy - codice MATTH50)
 // ═══════════════════════════════════════════════════════════════
-const licenses = new Map(); // In produzione usare un database
 
 function generateLicenseKey() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -64,7 +91,7 @@ function generateLicenseKey() {
     return 'VSF-' + segments.join('-'); // Es: VSF-A1B2C-D3E4F-G5H6I-J7K8L
 }
 
-function createLicense(email, firstName, lastName, discountCode) {
+async function createLicense(email, firstName, lastName, discountCode) {
     const licenseKey = generateLicenseKey();
     const license = {
         key: licenseKey,
@@ -73,15 +100,37 @@ function createLicense(email, firstName, lastName, discountCode) {
         lastName,
         discountCode,
         activations: 0,
-        maxActivations: 1, // Una sola attivazione per licenza
-        hwid: null, // Hardware ID del PC su cui viene attivato
+        maxActivations: 1,
+        hwid: null,
         createdAt: new Date().toISOString(),
         activatedAt: null,
-        status: 'pending' // pending, active, revoked
+        status: 'pending'
     };
-    licenses.set(licenseKey, license);
+
+    try {
+        if (licensesCollection) {
+            await licensesCollection.insertOne(license);
+        }
+    } catch (error) {
+        console.error('❌ Errore salvataggio licenza:', error);
+    }
+
     console.log(`🔑 Licenza creata: ${licenseKey} per ${email}`);
     return license;
+}
+
+async function getLicense(licenseKey) {
+    if (!licensesCollection) return null;
+    return await licensesCollection.findOne({ key: licenseKey.toUpperCase() });
+}
+
+async function updateLicense(licenseKey, updates) {
+    if (!licensesCollection) return false;
+    const result = await licensesCollection.updateOne(
+        { key: licenseKey.toUpperCase() },
+        { $set: updates }
+    );
+    return result.modifiedCount > 0;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -106,29 +155,30 @@ app.get('/', (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // ROUTE: Lista Licenze (per admin)
 // ═══════════════════════════════════════════════════════════════
-app.get('/api/licenses', (req, res) => {
+app.get('/api/licenses', async (req, res) => {
     const adminKey = req.headers['x-admin-key'];
     if (adminKey !== process.env.ADMIN_KEY) {
         return res.status(401).json({ error: 'Non autorizzato' });
     }
 
-    const allLicenses = Array.from(licenses.values()).map(l => ({
-        key: l.key,
-        email: l.email,
-        firstName: l.firstName,
-        status: l.status,
-        activations: l.activations,
-        createdAt: l.createdAt,
-        activatedAt: l.activatedAt
-    }));
-
-    res.json({ count: allLicenses.length, licenses: allLicenses });
+    try {
+        if (!licensesCollection) {
+            return res.json({ count: 0, licenses: [] });
+        }
+        const allLicenses = await licensesCollection.find({}, {
+            projection: { key: 1, email: 1, firstName: 1, status: 1, activations: 1, createdAt: 1, activatedAt: 1, _id: 0 }
+        }).toArray();
+        res.json({ count: allLicenses.length, licenses: allLicenses });
+    } catch (error) {
+        console.error('Errore lista licenze:', error);
+        res.status(500).json({ error: 'Errore database' });
+    }
 });
 
 // ═══════════════════════════════════════════════════════════════
 // ROUTE: Valida Licenza (chiamato dal bot)
 // ═══════════════════════════════════════════════════════════════
-app.post('/api/validate-license', (req, res) => {
+app.post('/api/validate-license', async (req, res) => {
     try {
         const { licenseKey, hwid } = req.body;
 
@@ -136,7 +186,7 @@ app.post('/api/validate-license', (req, res) => {
             return res.json({ valid: false, error: 'Chiave licenza mancante' });
         }
 
-        const license = licenses.get(licenseKey.toUpperCase());
+        const license = await getLicense(licenseKey);
 
         if (!license) {
             return res.json({ valid: false, error: 'Chiave licenza non valida' });
@@ -148,10 +198,12 @@ app.post('/api/validate-license', (req, res) => {
 
         // Prima attivazione: salva l'HWID
         if (license.status === 'pending' && hwid) {
-            license.hwid = hwid;
-            license.status = 'active';
-            license.activatedAt = new Date().toISOString();
-            license.activations = 1;
+            await updateLicense(licenseKey, {
+                hwid: hwid,
+                status: 'active',
+                activatedAt: new Date().toISOString(),
+                activations: 1
+            });
             console.log(`✅ Licenza ${licenseKey} attivata su HWID: ${hwid}`);
             return res.json({
                 valid: true,
@@ -187,13 +239,13 @@ app.post('/api/validate-license', (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // ROUTE: Info Licenza (per admin)
 // ═══════════════════════════════════════════════════════════════
-app.get('/api/license-info/:key', (req, res) => {
+app.get('/api/license-info/:key', async (req, res) => {
     const adminKey = req.headers['x-admin-key'];
     if (adminKey !== process.env.ADMIN_KEY) {
         return res.status(401).json({ error: 'Non autorizzato' });
     }
 
-    const license = licenses.get(req.params.key.toUpperCase());
+    const license = await getLicense(req.params.key);
     if (!license) {
         return res.status(404).json({ error: 'Licenza non trovata' });
     }
@@ -204,20 +256,20 @@ app.get('/api/license-info/:key', (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // ROUTE: Revoca Licenza (per admin)
 // ═══════════════════════════════════════════════════════════════
-app.post('/api/revoke-license', (req, res) => {
+app.post('/api/revoke-license', async (req, res) => {
     const adminKey = req.headers['x-admin-key'];
     if (adminKey !== process.env.ADMIN_KEY) {
         return res.status(401).json({ error: 'Non autorizzato' });
     }
 
     const { licenseKey } = req.body;
-    const license = licenses.get(licenseKey.toUpperCase());
+    const license = await getLicense(licenseKey);
 
     if (!license) {
         return res.status(404).json({ error: 'Licenza non trovata' });
     }
 
-    license.status = 'revoked';
+    await updateLicense(licenseKey, { status: 'revoked' });
     console.log(`🚫 Licenza revocata: ${licenseKey}`);
     res.json({ success: true, message: 'Licenza revocata' });
 });
@@ -225,22 +277,20 @@ app.post('/api/revoke-license', (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // ROUTE: Reset HWID Licenza (per admin - permette nuova attivazione)
 // ═══════════════════════════════════════════════════════════════
-app.post('/api/reset-license-hwid', (req, res) => {
+app.post('/api/reset-license-hwid', async (req, res) => {
     const adminKey = req.headers['x-admin-key'];
     if (adminKey !== process.env.ADMIN_KEY) {
         return res.status(401).json({ error: 'Non autorizzato' });
     }
 
     const { licenseKey } = req.body;
-    const license = licenses.get(licenseKey.toUpperCase());
+    const license = await getLicense(licenseKey);
 
     if (!license) {
         return res.status(404).json({ error: 'Licenza non trovata' });
     }
 
-    license.hwid = null;
-    license.status = 'pending';
-    license.activatedAt = null;
+    await updateLicense(licenseKey, { hwid: null, status: 'pending', activatedAt: null });
     console.log(`🔄 HWID reset per licenza: ${licenseKey}`);
     res.json({ success: true, message: 'HWID resettato, licenza pronta per nuova attivazione' });
 });
@@ -303,7 +353,7 @@ app.post('/api/complete-order', async (req, res) => {
         let license = null;
         const ACADEMY_CODES = ['MATTH50', 'FREE100'];
         if (ACADEMY_CODES.includes(order.discountCode)) {
-            license = createLicense(email, firstName, lastName, order.discountCode);
+            license = await createLicense(email, firstName, lastName, order.discountCode);
             order.licenseKey = license.key;
         }
 
