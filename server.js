@@ -92,6 +92,7 @@ function generateLicenseKey() {
 }
 
 async function createLicense(email, firstName, lastName, discountCode) {
+    await connectDB(); // Assicura connessione prima di inserire
     const licenseKey = generateLicenseKey();
     const license = {
         key: licenseKey,
@@ -120,11 +121,13 @@ async function createLicense(email, firstName, lastName, discountCode) {
 }
 
 async function getLicense(licenseKey) {
+    await connectDB();
     if (!licensesCollection) return null;
     return await licensesCollection.findOne({ key: licenseKey.toUpperCase() });
 }
 
 async function updateLicense(licenseKey, updates) {
+    await connectDB();
     if (!licensesCollection) return false;
     const result = await licensesCollection.updateOne(
         { key: licenseKey.toUpperCase() },
