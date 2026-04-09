@@ -299,9 +299,10 @@ app.post('/api/complete-order', async (req, res) => {
             createdAt: new Date().toISOString()
         };
 
-        // Se usa codice MATTH50 (Academy), genera licenza
+        // Se usa codice Academy (MATTH50 o FREE100 per test), genera licenza
         let license = null;
-        if (order.discountCode === 'MATTH50') {
+        const ACADEMY_CODES = ['MATTH50', 'FREE100'];
+        if (ACADEMY_CODES.includes(order.discountCode)) {
             license = createLicense(email, firstName, lastName, order.discountCode);
             order.licenseKey = license.key;
         }
@@ -685,7 +686,8 @@ async function sendDownloadEmail(order) {
 
 async function sendNotificationEmail(order) {
     const notifyEmail = process.env.NOTIFY_EMAIL || process.env.EMAIL_USER;
-    const isAcademy = order.discountCode === 'MATTH50';
+    const ACADEMY_CODES = ['MATTH50', 'FREE100'];
+    const isAcademy = ACADEMY_CODES.includes(order.discountCode);
 
     await transporter.sendMail({
         from: `"VaultSystemFx Bot" <${process.env.EMAIL_USER}>`,
