@@ -592,6 +592,12 @@ async function sendDownloadEmailWithLicense(order, license) {
                     <p><strong>IMPORTANTE:</strong> La licenza e personale e non trasferibile. E collegata al tuo dispositivo al primo avvio. La condivisione o rivendita comportera la revoca immediata della licenza.</p>
                 </div>
 
+                <div style="background: linear-gradient(135deg, #0088cc 0%, #00a6ed 100%); border-radius: 14px; padding: 24px; margin-top: 24px; text-align: center;">
+                    <p style="font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 8px;">Unisciti alla Sala Annunci Telegram</p>
+                    <p style="font-size: 13px; color: rgba(255,255,255,0.85); margin-bottom: 16px;">Ricevi aggiornamenti, novita e comunicazioni importanti</p>
+                    <a href="https://t.me/+nmxkVpNEfBI5OGU0" style="display: inline-block; padding: 12px 28px; background: #ffffff; color: #0088cc !important; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 10px;">Entra nel Canale Telegram</a>
+                </div>
+
                 <div class="support">
                     <p>Hai bisogno di supporto?</p>
                     <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>
