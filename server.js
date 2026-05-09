@@ -62,11 +62,10 @@ const DOWNLOAD_LINKS = {
 };
 
 // Codici sconto (nascosti lato server - non visibili nel frontend)
-// discount = quanto sottrarre dal prezzo EUR (499), discountUSDT = quanto sottrarre da USDT (579)
+// discount = quanto sottrarre dal prezzo EUR (799), discountUSDT = quanto sottrarre da USDT (927)
 const DISCOUNT_CODES = {
-    'MATTH50': { discount: 349, discountUSDT: 405 },
-    'FREE100': { discount: 499, discountUSDT: 579 },
-    'SAN1': { discount: 498, discountUSDT: 578 }
+    'FREE100': { discount: 799, discountUSDT: 927 },
+    'SAN1': { discount: 798, discountUSDT: 926 }
 };
 
 const LOGO_URL = 'https://i.imgur.com/cV04HTP.png';
