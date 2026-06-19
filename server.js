@@ -15,6 +15,7 @@ const { MongoClient } = require('mongodb');
 // ═══════════════════════════════════════════════════════════════
 let db = null;
 let licensesCollection = null;
+let reviewsCollection = null;
 
 async function connectDB() {
     if (db) return db;
@@ -23,9 +24,11 @@ async function connectDB() {
         await client.connect();
         db = client.db('vaultsystemfx');
         licensesCollection = db.collection('licenses');
+        reviewsCollection = db.collection('reviews');
         // Crea indice per ricerca veloce
         await licensesCollection.createIndex({ key: 1 }, { unique: true });
         await licensesCollection.createIndex({ email: 1 });
+        await reviewsCollection.createIndex({ createdAt: -1 });
         console.log('✅ MongoDB connesso');
         return db;
     } catch (error) {
@@ -152,7 +155,10 @@ app.get('/', (req, res) => {
             licenseInfo: 'GET /api/license-info/:key (admin)',
             revokeLicense: 'POST /api/revoke-license (admin)',
             resetLicenseHwid: 'POST /api/reset-license-hwid (admin)',
-            listLicenses: 'GET /api/licenses (admin)'
+            listLicenses: 'GET /api/licenses (admin)',
+            getReviews: 'GET /api/reviews',
+            submitReview: 'POST /api/reviews',
+            deleteReview: 'DELETE /api/reviews (admin)'
         }
     });
 });
@@ -176,6 +182,137 @@ app.get('/api/licenses', async (req, res) => {
         res.json({ count: allLicenses.length, licenses: allLicenses });
     } catch (error) {
         console.error('Errore lista licenze:', error);
+        res.status(500).json({ error: 'Errore database' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTE: Recensioni - Lettura pubblica
+// ═══════════════════════════════════════════════════════════════
+app.get('/api/reviews', async (req, res) => {
+    try {
+        await connectDB();
+        if (!reviewsCollection) {
+            return res.json({ count: 0, reviews: [] });
+        }
+        const reviews = await reviewsCollection
+            .find({ approved: true }, {
+                projection: { name: 1, role: 1, rating: 1, text: 1, createdAt: 1, _id: 0 }
+            })
+            .sort({ createdAt: -1 })
+            .limit(100)
+            .toArray();
+        res.json({ count: reviews.length, reviews });
+    } catch (error) {
+        console.error('Errore lettura recensioni:', error);
+        res.status(500).json({ error: 'Errore database' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTE: Recensioni - Invio nuova recensione (pubblico)
+// ═══════════════════════════════════════════════════════════════
+// Escape HTML per evitare XSS quando il testo viene mostrato nel sito
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+app.post('/api/reviews', async (req, res) => {
+    try {
+        await connectDB();
+        if (!reviewsCollection) {
+            return res.status(503).json({ error: 'Servizio non disponibile' });
+        }
+
+        let { name, role, rating, text, website } = req.body || {};
+
+        // Honeypot anti-spam: se "website" è compilato, è un bot
+        if (website) {
+            return res.json({ success: true }); // finge successo
+        }
+
+        // Validazione
+        name = (name || '').toString().trim();
+        role = (role || '').toString().trim();
+        text = (text || '').toString().trim();
+        rating = parseInt(rating, 10);
+
+        if (name.length < 2 || name.length > 40) {
+            return res.status(400).json({ error: 'Nome non valido (2-40 caratteri)' });
+        }
+        if (text.length < 10 || text.length > 600) {
+            return res.status(400).json({ error: 'La recensione deve avere tra 10 e 600 caratteri' });
+        }
+        if (!(rating >= 1 && rating <= 5)) {
+            return res.status(400).json({ error: 'Valutazione non valida (1-5 stelle)' });
+        }
+        if (role.length > 40) {
+            role = role.slice(0, 40);
+        }
+
+        // Rate limit semplice: max 1 recensione ogni 60s dallo stesso IP
+        const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '')
+            .toString().split(',')[0].trim();
+        if (ip) {
+            const recent = await reviewsCollection.findOne({
+                ip,
+                createdAt: { $gt: new Date(Date.now() - 60 * 1000) }
+            });
+            if (recent) {
+                return res.status(429).json({ error: 'Hai appena inviato una recensione. Riprova tra poco.' });
+            }
+        }
+
+        const review = {
+            name: escapeHtml(name),
+            role: role ? escapeHtml(role) : '',
+            rating,
+            text: escapeHtml(text),
+            approved: true, // pubblicata subito (metti false per moderazione manuale)
+            ip,
+            createdAt: new Date()
+        };
+
+        await reviewsCollection.insertOne(review);
+
+        res.json({
+            success: true,
+            review: {
+                name: review.name,
+                role: review.role,
+                rating: review.rating,
+                text: review.text,
+                createdAt: review.createdAt
+            }
+        });
+    } catch (error) {
+        console.error('Errore invio recensione:', error);
+        res.status(500).json({ error: 'Errore durante il salvataggio' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTE: Recensioni - Eliminazione (admin)
+// ═══════════════════════════════════════════════════════════════
+app.delete('/api/reviews', async (req, res) => {
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY) {
+        return res.status(401).json({ error: 'Non autorizzato' });
+    }
+    try {
+        await connectDB();
+        const { ObjectId } = require('mongodb');
+        const { id } = req.body || {};
+        if (!id) return res.status(400).json({ error: 'id mancante' });
+        await reviewsCollection.deleteOne({ _id: new ObjectId(id) });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Errore eliminazione recensione:', error);
         res.status(500).json({ error: 'Errore database' });
     }
 });
