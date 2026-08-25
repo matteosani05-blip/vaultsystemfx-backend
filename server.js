@@ -71,7 +71,7 @@ const DOWNLOAD_LINKS = {
 // ═══════════════════════════════════════════════════════════════
 const PURCHASES_ENABLED = process.env.PURCHASES_ENABLED
     ? process.env.PURCHASES_ENABLED === 'true'
-    : false; // <-- attualmente ACQUISTI DISABILITATI
+    : true; // <-- ACQUISTI ATTIVI (account Stripe recuperato)
 const PURCHASES_DISABLED_MSG = 'Gli acquisti sono temporaneamente sospesi per manutenzione. Riprova più tardi.';
 
 // Prezzo base (fonte di verità lato server: NON fidarsi mai dell'importo del client)
