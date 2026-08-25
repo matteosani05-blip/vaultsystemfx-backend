@@ -64,12 +64,37 @@ const DOWNLOAD_LINKS = {
     student: process.env.DOWNLOAD_LINK_STUDENT || 'INSERISCI_LINK_DROPBOX_ACADEMY_QUI'
 };
 
+// ═══════════════════════════════════════════════════════════════
+// INTERRUTTORE ACQUISTI (kill switch)
+// Metti a `false` per BLOCCARE tutti gli acquisti (carta, Apple/Google Pay, crypto).
+// Rimetti a `true` per riattivarli. Sovrascrivibile con env PURCHASES_ENABLED=true/false.
+// ═══════════════════════════════════════════════════════════════
+const PURCHASES_ENABLED = process.env.PURCHASES_ENABLED
+    ? process.env.PURCHASES_ENABLED === 'true'
+    : false; // <-- attualmente ACQUISTI DISABILITATI
+const PURCHASES_DISABLED_MSG = 'Gli acquisti sono temporaneamente sospesi per manutenzione. Riprova più tardi.';
+
+// Prezzo base (fonte di verità lato server: NON fidarsi mai dell'importo del client)
+const BASE_PRICE_EUR = 799;
+const BASE_PRICE_USDT = 927;
+
 // Codici sconto (nascosti lato server - non visibili nel frontend)
 // discount = quanto sottrarre dal prezzo EUR (799), discountUSDT = quanto sottrarre da USDT (927)
 const DISCOUNT_CODES = {
     'FREE100': { discount: 799, discountUSDT: 927 },
     'SAN1': { discount: 798, discountUSDT: 926 }
 };
+
+// Calcola l'importo EUR autoritativo lato server a partire dal prezzo base
+// ed eventuale codice sconto validato. L'importo inviato dal client viene ignorato.
+function computeAuthoritativeAmountEUR(discountCode) {
+    let amount = BASE_PRICE_EUR;
+    if (discountCode && typeof discountCode === 'string') {
+        const data = DISCOUNT_CODES[discountCode.trim().toUpperCase()];
+        if (data) amount = BASE_PRICE_EUR - data.discount;
+    }
+    return Math.max(0, amount);
+}
 
 const LOGO_URL = 'https://i.imgur.com/cV04HTP.png';
 const SUPPORT_EMAIL = 'vaultsystemassistence@gmail.com';
@@ -471,6 +496,9 @@ app.post('/api/validate-discount', (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 app.post('/api/complete-order', async (req, res) => {
     try {
+        if (!PURCHASES_ENABLED) {
+            return res.status(503).json({ success: false, error: PURCHASES_DISABLED_MSG });
+        }
         let body = req.body;
         if (typeof body === 'string') body = JSON.parse(body);
         if (!body || Object.keys(body).length === 0) {
@@ -543,6 +571,9 @@ app.post('/api/paypal-webhook', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 app.post('/api/crypto-order', async (req, res) => {
     try {
+        if (!PURCHASES_ENABLED) {
+            return res.status(503).json({ success: false, error: PURCHASES_DISABLED_MSG });
+        }
         const { firstName, lastName, email, telegram, plan, amount, crypto, txId } = req.body;
 
         const order = {
@@ -571,20 +602,35 @@ app.post('/api/crypto-order', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 app.post('/api/create-payment-intent', async (req, res) => {
     try {
-        const { amount, email, firstName, lastName } = req.body;
+        if (!PURCHASES_ENABLED) {
+            return res.status(503).json({ error: PURCHASES_DISABLED_MSG });
+        }
+        const { email, firstName, lastName, discountCode } = req.body;
+
+        // SICUREZZA: l'importo NON viene preso dal client. Lo ricalcola il server
+        // dal prezzo base + eventuale codice sconto valido. Così è impossibile
+        // manipolare il prezzo (es. pagare €0,01) dal browser.
+        const amountEUR = computeAuthoritativeAmountEUR(discountCode);
+
+        // Stripe non accetta PaymentIntent con importo <= 0.
+        // Gli ordini gratuiti (es. FREE100) passano da /api/complete-order, non da qui.
+        if (amountEUR <= 0) {
+            return res.status(400).json({ error: 'Importo non valido per pagamento con carta' });
+        }
 
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(amount * 100), // Stripe usa centesimi
+            amount: Math.round(amountEUR * 100), // Stripe usa centesimi
             currency: 'eur',
             receipt_email: email,
             metadata: {
                 firstName,
                 lastName,
-                email
+                email,
+                discountCode: discountCode ? String(discountCode).trim().toUpperCase() : ''
             }
         });
 
-        res.json({ clientSecret: paymentIntent.client_secret });
+        res.json({ clientSecret: paymentIntent.client_secret, amount: amountEUR });
 
     } catch (error) {
         console.error('❌ Stripe error:', error);
