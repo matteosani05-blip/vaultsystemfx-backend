@@ -75,14 +75,14 @@ const PURCHASES_ENABLED = process.env.PURCHASES_ENABLED
 const PURCHASES_DISABLED_MSG = 'Gli acquisti sono temporaneamente sospesi per manutenzione. Riprova più tardi.';
 
 // Prezzo base (fonte di verità lato server: NON fidarsi mai dell'importo del client)
-const BASE_PRICE_EUR = 799;
-const BASE_PRICE_USDT = 927;
+const BASE_PRICE_EUR = 1199;
+const BASE_PRICE_USDT = 1391; // USDC (rete ERC-20) - equivalente in USD di 1199 EUR
 
 // Codici sconto (nascosti lato server - non visibili nel frontend)
-// discount = quanto sottrarre dal prezzo EUR (799), discountUSDT = quanto sottrarre da USDT (927)
+// discount = quanto sottrarre dal prezzo EUR (1199), discountUSDT = quanto sottrarre da USDC (1391)
 const DISCOUNT_CODES = {
-    'FREE100': { discount: 799, discountUSDT: 927 },
-    'SAN1': { discount: 798, discountUSDT: 926 }
+    'FREE100': { discount: 1199, discountUSDT: 1391 },
+    'SAN1': { discount: 1198, discountUSDT: 1390 }
 };
 
 // Calcola l'importo EUR autoritativo lato server a partire dal prezzo base
@@ -968,7 +968,7 @@ async function sendCryptoNotification(order) {
     await transporter.sendMail({
         from: `"VaultSystemFx Bot" <${process.env.EMAIL_USER}>`,
         to: notifyEmail,
-        subject: `🪙 USDT: Verifica pagamento - ${order.firstName} ${order.lastName}`,
+        subject: `🪙 USDC: Verifica pagamento - ${order.firstName} ${order.lastName}`,
         html: `
 <!DOCTYPE html>
 <html>
@@ -977,7 +977,7 @@ async function sendCryptoNotification(order) {
     <style>
         body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: #f0f2f5; padding: 24px; }
         .card { max-width: 500px; margin: 0 auto; background: #fff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e5ea; }
-        .header { background: linear-gradient(135deg, #26A17B, #1a7a5c); padding: 24px; text-align: center; }
+        .header { background: linear-gradient(135deg, #2775CA, #1c5aa0); padding: 24px; text-align: center; }
         .header h1 { color: #fff; font-size: 18px; margin: 0; }
         .body { padding: 24px; }
         .field { margin-bottom: 14px; padding: 12px 16px; background: #f8f9fb; border-radius: 10px; }
@@ -991,7 +991,7 @@ async function sendCryptoNotification(order) {
 <body>
     <div class="card">
         <div class="header">
-            <h1>💰 Nuovo Pagamento USDT da Verificare</h1>
+            <h1>💰 Nuovo Pagamento USDC da Verificare</h1>
         </div>
         <div class="body">
             <div class="field">
@@ -1008,11 +1008,11 @@ async function sendCryptoNotification(order) {
             </div>
             <div class="field">
                 <div class="field-label">Piano</div>
-                <div class="field-value">${order.plan} — €${order.amount}</div>
+                <div class="field-value">${order.plan} — ${order.amount} ${order.crypto || 'USDC'}</div>
             </div>
             <div class="field">
                 <div class="field-label">Rete</div>
-                <div class="field-value">${order.network || 'TRC-20'}</div>
+                <div class="field-value">${order.network || 'ERC-20'}</div>
             </div>
             <div class="field">
                 <div class="field-label">Transaction ID (TxID)</div>
@@ -1061,7 +1061,7 @@ async function sendCryptoConfirmationToCustomer(order) {
         .header-sub strong { color: #6ee7b7; font-weight: 600; }
         .card-body { padding: 40px; }
         .info-box { background: linear-gradient(135deg, rgba(38,161,123,0.1), rgba(38,161,123,0.03)); border: 1px solid rgba(38,161,123,0.25); border-radius: 16px; padding: 28px; margin-bottom: 28px; }
-        .info-title { font-size: 18px; font-weight: 700; color: #26A17B; margin-bottom: 16px; }
+        .info-title { font-size: 18px; font-weight: 700; color: #2775CA; margin-bottom: 16px; }
         .info-text { font-size: 15px; color: #475569; line-height: 1.8; }
         .order-details { background: #f8f9fb; border-radius: 16px; padding: 8px 0; margin-bottom: 32px; }
         .order-row { display: table; width: 100%; padding: 16px 28px; border-bottom: 1px solid #e9ebef; }
@@ -1085,14 +1085,14 @@ async function sendCryptoConfirmationToCustomer(order) {
                 <div class="brand-name">VaultSystemFx</div>
                 <div class="badge">✓ Ordine Ricevuto</div>
                 <div class="header-title">Grazie, ${order.firstName || 'Trader'}!</div>
-                <p class="header-sub">Abbiamo ricevuto il tuo ordine e stiamo verificando<br>il pagamento <strong>USDT</strong> sulla rete <strong>TRC-20</strong></p>
+                <p class="header-sub">Abbiamo ricevuto il tuo ordine e stiamo verificando<br>il pagamento <strong>USDC</strong> sulla rete <strong>ERC-20</strong></p>
             </div>
 
             <div class="card-body">
                 <div class="info-box">
                     <div class="info-title">⏳ Verifica in corso</div>
                     <div class="info-text">
-                        Stiamo controllando la transazione sulla blockchain Tron.
+                        Stiamo controllando la transazione sulla blockchain Ethereum.
                         Una volta confermato il pagamento, riceverai un'email con il link per scaricare <strong>VaultSystemFx</strong>.
                         <br><br>
                         <strong>Tempo stimato:</strong> entro 24 ore (solitamente molto meno)
@@ -1110,11 +1110,11 @@ async function sendCryptoConfirmationToCustomer(order) {
                     </div>
                     <div class="order-row">
                         <span class="order-label">Importo</span>
-                        <span class="order-value">${order.amount} USDT</span>
+                        <span class="order-value">${order.amount} USDC</span>
                     </div>
                     <div class="order-row">
                         <span class="order-label">Rete</span>
-                        <span class="order-value">TRC-20 (Tron)</span>
+                        <span class="order-value">ERC-20 (Ethereum)</span>
                     </div>
                     <div class="order-row">
                         <span class="order-label">TxID</span>
