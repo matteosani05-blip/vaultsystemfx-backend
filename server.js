@@ -16,6 +16,7 @@ const { MongoClient } = require('mongodb');
 let db = null;
 let licensesCollection = null;
 let reviewsCollection = null;
+let telegramCollection = null;
 
 async function connectDB() {
     if (db) return db;
@@ -25,10 +26,14 @@ async function connectDB() {
         db = client.db('vaultsystemfx');
         licensesCollection = db.collection('licenses');
         reviewsCollection = db.collection('reviews');
+        telegramCollection = db.collection('telegram_pairings');
         // Crea indice per ricerca veloce
         await licensesCollection.createIndex({ key: 1 }, { unique: true });
         await licensesCollection.createIndex({ email: 1 });
         await reviewsCollection.createIndex({ createdAt: -1 });
+        // Pairing Telegram: ricerca per codice + scadenza automatica dopo 1h
+        await telegramCollection.createIndex({ code: 1 }, { unique: true });
+        await telegramCollection.createIndex({ createdAt: 1 }, { expireAfterSeconds: 3600 });
         console.log('✅ MongoDB connesso');
         return db;
     } catch (error) {
@@ -1139,6 +1144,92 @@ async function sendCryptoConfirmationToCustomer(order) {
     });
     console.log(`📧 Email conferma ordine crypto inviata a ${order.email}`);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// TELEGRAM — abbinamento automatico Chat ID (webhook + resolve)
+// ═══════════════════════════════════════════════════════════════
+async function sendTelegramMessage(chatId, text) {
+    try {
+        const token = process.env.TELEGRAM_BOT_TOKEN;
+        if (!token) return;
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+        });
+    } catch (e) {
+        console.error('sendTelegramMessage error:', e.message);
+    }
+}
+
+// Telegram invia qui gli update (impostare il webhook con /api/telegram/set-webhook)
+app.post('/api/telegram/webhook', async (req, res) => {
+    try {
+        await connectDB();
+        const update = req.body || {};
+        const msg = update.message || update.edited_message || {};
+        const text = (msg.text || '').trim();
+        const chatId = msg.chat && msg.chat.id;
+        if (chatId && text) {
+            // Estrai il codice di pairing: "/start VSFxxxx" oppure testo che contiene VSFxxxx
+            let code = null;
+            const m = text.match(/VSF[A-Z0-9]{4,}/i);
+            if (m) {
+                code = m[0].toUpperCase();
+            } else if (text.toLowerCase().startsWith('/start')) {
+                const parts = text.split(/\s+/);
+                if (parts[1]) code = parts[1].toUpperCase();
+            }
+            if (code && telegramCollection) {
+                await telegramCollection.updateOne(
+                    { code },
+                    { $set: { code, chatId: String(chatId), createdAt: new Date() } },
+                    { upsert: true }
+                );
+                console.log(`🔗 Telegram pairing: ${code} → ${chatId}`);
+                await sendTelegramMessage(chatId,
+                    '✅ <b>Collegamento riuscito!</b>\nTorna nell\'app VaultSystemFx: il tuo Chat ID è stato rilevato automaticamente.');
+            }
+        }
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('Errore webhook telegram:', e.message);
+        res.json({ ok: true }); // rispondi sempre 200 a Telegram
+    }
+});
+
+// L'app interroga questo endpoint per recuperare il Chat ID abbinato al codice
+app.get('/api/telegram/resolve', async (req, res) => {
+    try {
+        await connectDB();
+        const code = (req.query.code || '').toString().toUpperCase();
+        if (!code) return res.json({ ok: false, error: 'code mancante' });
+        if (!telegramCollection) return res.json({ ok: false, error: 'DB non disponibile' });
+        const doc = await telegramCollection.findOne({ code });
+        if (doc && doc.chatId) return res.json({ ok: true, chatId: doc.chatId });
+        return res.json({ ok: false, error: 'non ancora collegato' });
+    } catch (e) {
+        return res.json({ ok: false, error: e.message });
+    }
+});
+
+// Admin: registra il webhook su Telegram (chiamare una volta dopo il deploy)
+app.get('/api/telegram/set-webhook', async (req, res) => {
+    try {
+        if ((req.query.key || '') !== process.env.ADMIN_KEY) {
+            return res.status(403).json({ error: 'non autorizzato' });
+        }
+        const token = process.env.TELEGRAM_BOT_TOKEN;
+        if (!token) return res.json({ ok: false, error: 'TELEGRAM_BOT_TOKEN mancante nelle env' });
+        const base = process.env.PUBLIC_URL || `https://${req.headers.host}`;
+        const hookUrl = `${base}/api/telegram/webhook`;
+        const r = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(hookUrl)}`);
+        const data = await r.json();
+        return res.json({ ok: data.ok, webhook: hookUrl, telegram: data });
+    } catch (e) {
+        return res.json({ ok: false, error: e.message });
+    }
+});
 
 // ═══════════════════════════════════════════════════════════════
 // AVVIO SERVER
